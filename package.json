@@ -13,7 +13,8 @@
     "lint": "eslint . --ignore-pattern dist --ignore-pattern .next",
     "db:generate": "drizzle-kit generate",
     "db:migrate:local": "node --import ./scripts/sites-env.mjs ./node_modules/wrangler/bin/wrangler.js d1 migrations apply DB --local --config wrangler.local.json --persist-to .wrangler/state",
-    "db:inspect:local": "node --import ./scripts/sites-env.mjs ./node_modules/wrangler/bin/wrangler.js d1 execute DB --local --config wrangler.local.json --persist-to .wrangler/state"
+    "db:inspect:local": "node --import ./scripts/sites-env.mjs ./node_modules/wrangler/bin/wrangler.js d1 execute DB --local --config wrangler.local.json --persist-to .wrangler/state",
+    "build:netlify": "next build --webpack"
   },
   "dependencies": {
     "@base-ui/react": "^1.7.0",
