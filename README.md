@@ -59,12 +59,28 @@ Production submissions remain in the existing Sites D1 database and can be revie
 
 Do not commit dependency trees, built output, local databases, release archives, credentials, or `.env`/`.dev.vars` files. The pinned lockfile and pnpm workspace install policy are part of the reproducible setup.
 
-## Future hosting work
+## Netlify deployment
 
-Netlify deployment is a separate step. `cloudflare:workers`, the D1 `DB` binding, and the Vinext Worker build are platform-specific. Uploading only static assets will not preserve `/api/inquiries`. Choose and implement a compatible server runtime/backend plan before changing hosts. This repository does not configure Netlify or replace the existing form backend.
+`netlify.toml` overrides the UI build command with `pnpm run build:netlify` and publishes `.next`. This runs standard Next.js with webpack, producing the output required by Netlify's Next.js runtime. Keep the existing `@netlify/plugin-nextjs` runtime enabled. `pnpm run build`, `dev`, and `start` retain the original Sites/Workers workflow.
+
+The Netlify build sets the public, non-secret `NEXT_PUBLIC_INQUIRY_BACKEND=netlify` switch. The browser then submits URL-encoded fields to `/__forms.html`; the matching static form definition registers `workflow-leak-audit` with Netlify Forms. Enable form detection under the site's Forms settings **before redeploying**. Verify the form appears after deployment, then make a real test submission and confirm receipt under Forms (also check Spam). A local Next server does not emulate Netlify Forms processing.
+
+Set email notifications in Netlify's Forms settings to the desired mailbox and verify delivery. Notifications are not configured by this repository. Netlify submissions are stored in Netlify, separately from existing Sites D1 leads; no existing data is moved. The HTML field requirements and Netlify spam/honeypot filtering apply to this form; the original D1 endpoint's custom validation is specific to Sites.
+
+Netlify has no Cloudflare D1 binding. The Next webpack configuration replaces `cloudflare:workers` with an empty environment module so the retained legacy `/api/inquiries` endpoint fails with 503 instead of claiming to save a lead. The Netlify browser form does not call that endpoint. Vite/Sites retains its real Cloudflare import and D1 behavior. Do not use a generic static-assets upload for the original Worker build.
+
+To reproduce the Netlify build locally:
+
+```sh
+NEXT_PUBLIC_INQUIRY_BACKEND=netlify pnpm run build:netlify
+```
 
 ## Migration verification
 
 Verified with Node 24.19.0 and pnpm 11.25.0: clean dependency installation with `--frozen-lockfile` (628 packages from the available offline cache), portable production build, `tsc --noEmit`, local D1 migration, and source/exclusion checks. Application files, styles, favicon, schema, and existing migration are unchanged from the original Sites source.
 
 The original endpoint also passed an isolated check with an in-memory SQLite adapter: invalid JSON, missing fields, honeypot without insertion, valid insertion with `status = 'new'`, declared oversized requests, and unavailable storage. That check does not prove Workers HTTP integration. A built-server HTTP smoke test could not run here because Wrangler exited with `uv_interface_addresses returned Unknown system error 1` while enumerating network interfaces. Browser rendering and an end-to-end request through the built Worker remain unverified in this migration environment. No production form submissions were made.
+
+## Netlify repair verification
+
+Standard Next.js production build (including TypeScript), the retained portable Vinext build, lint on modified TypeScript files, and local Next HTTP checks passed. HTTP checks covered the landing page, static form definition, and the legacy endpoint returning 503 without D1. Dependencies were reused from the existing verified checkout; a new dependency installation was not repeated. Netlify adapter execution, deployed form capture, and email delivery remain to be verified after the PR is deployed.

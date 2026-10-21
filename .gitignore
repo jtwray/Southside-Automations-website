@@ -53,3 +53,6 @@ next-env.d.ts
 *.db
 *.tsbuildinfo
 .dev.vars*
+
+# Netlify local CLI state
+/.netlify/

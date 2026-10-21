@@ -2,6 +2,8 @@
 
 import { useState, type FormEvent } from "react";
 
+const netlifyForms = process.env.NEXT_PUBLIC_INQUIRY_BACKEND === "netlify";
+
 type Status = "idle" | "sending" | "success" | "error";
 
 export default function AuditForm() {
@@ -14,13 +16,20 @@ export default function AuditForm() {
     setStatus("sending"); setMessage("");
     const data = Object.fromEntries(new FormData(form).entries());
     try {
-      const response = await fetch("/api/inquiries", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify(data) });
-      const result = await response.json() as { error?: string };
+      const response = netlifyForms
+        ? await fetch("/__forms.html", {
+            method: "POST",
+            headers: { "Content-Type": "application/x-www-form-urlencoded" },
+            body: new URLSearchParams(data as Record<string, string>).toString(),
+          })
+        : await fetch("/api/inquiries", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify(data) });
+      const result = netlifyForms ? {} : await response.json() as { error?: string };
       if (!response.ok) throw new Error(result.error || "We couldn't send your request. Please try again.");
       form.reset(); setStatus("success"); setMessage("Thanks — your workflow is on our list. We'll reply to the email you provided.");
     } catch (error) { setStatus("error"); setMessage(error instanceof Error ? error.message : "We couldn't send your request. Please try again."); }
   }
-  return <form onSubmit={submit} noValidate={false}>
+  return <form name="workflow-leak-audit" method="post" onSubmit={submit} noValidate={false}>
+    {netlifyForms && <input type="hidden" name="form-name" value="workflow-leak-audit"/>}
     <div className="form-two"><label>Name <span>*</span><input name="name" autoComplete="name" required maxLength={120}/></label><label>Business <span>*</span><input name="business" autoComplete="organization" required maxLength={160}/></label></div>
     <div className="form-two"><label>Email <span>*</span><input name="email" type="email" autoComplete="email" required maxLength={254}/></label><label>Phone <small>(optional)</small><input name="phone" type="tel" autoComplete="tel" maxLength={40}/></label></div>
     <label>What repetitive task or business process drives you crazy? <span>*</span><textarea name="workflow" required minLength={10} maxLength={5000} rows={5} placeholder="For example: We finish jobs in the field, but the office waits days for notes and photos before it can invoice."/></label>
